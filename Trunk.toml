@@ -1,0 +1,5 @@
+[build]
+target = "public/index.html"
+manifest_path = "Cargo.toml"
+package = "start-to-run"
+dist = "dist"
