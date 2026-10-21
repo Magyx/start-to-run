@@ -1,11 +1,13 @@
 use headless_chrome::{Browser, LaunchOptions};
 use regex::Regex;
 use scraper::{Html, Selector};
-use std::error::Error;
-use std::fs::{self, File};
-use std::io::Write;
-use std::path::Path;
-use std::time::Duration;
+use std::{
+    error::Error,
+    fs::{self, File},
+    io::Write,
+    path::Path,
+    time::Duration,
+};
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
@@ -83,6 +85,19 @@ fn scrape_schedule(output_path: &Path) -> Result<usize, Box<dyn Error>> {
     rust_code.push_str("// =========================================================\n\n");
     rust_code.push_str("use crate::schedule::{Session, Interval, IntervalKind};\n\n");
     rust_code.push_str("pub const SCHEDULE: &[Session] = &[\n");
+    rust_code.push_str(
+        r#"    Session {
+        week: 1,
+        session: 0,
+        intervals: &[
+            Interval { kind: IntervalKind::Run, duration_secs: 10 },
+            Interval { kind: IntervalKind::Walk, duration_secs: 10 },
+            Interval { kind: IntervalKind::Run, duration_secs: 10 },
+            Interval { kind: IntervalKind::Walk, duration_secs: 10 },
+        ],
+    },
+"#,
+    );
 
     let mut entries_count = 0;
 

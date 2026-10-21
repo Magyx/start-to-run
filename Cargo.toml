@@ -7,17 +7,19 @@ edition = "2021"
 leptos = { version = "0.8", features = ["csr"] }
 wasm-bindgen = "0.2"
 web-sys = { version = "0.3", features = [
-    "AudioContext",
-    "OscillatorNode",
-    "GainNode",
-    "AudioParam",
-    "AudioDestinationNode",
-    "OscillatorType",
-    "Navigator",
-    "WakeLock",
-    "WakeLockSentinel",
-    "Window",
-    "Document",
+  "AudioContext",
+  "OscillatorNode",
+  "GainNode",
+  "AudioParam",
+  "AudioDestinationNode",
+  "OscillatorType",
+  "Navigator",
+  "WakeLock",
+  "WakeLockSentinel",
+  "Window",
+  "Document",
+  "SpeechSynthesis",
+  "SpeechSynthesisUtterance",
 ] }
 js-sys = "0.3"
 gloo-timers = { version = "0.4", features = ["futures"] }
@@ -38,4 +40,3 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
-

@@ -7,6 +7,16 @@ use crate::schedule::{Session, Interval, IntervalKind};
 pub const SCHEDULE: &[Session] = &[
     Session {
         week: 1,
+        session: 0,
+        intervals: &[
+            Interval { kind: IntervalKind::Run, duration_secs: 10 },
+            Interval { kind: IntervalKind::Walk, duration_secs: 10 },
+            Interval { kind: IntervalKind::Run, duration_secs: 10 },
+            Interval { kind: IntervalKind::Walk, duration_secs: 10 },
+        ],
+    },
+    Session {
+        week: 1,
         session: 1,
         intervals: &[
             Interval { kind: IntervalKind::Run, duration_secs: 60 },

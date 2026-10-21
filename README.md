@@ -9,7 +9,7 @@ programme.  Built in Rust, compiled to WebAssembly, served as an installable PWA
 
 - Full 10-week / 30-session schedule baked in
 - Full-screen colour changes on interval transitions (visible at a glance)
-- Audio beeps on each transition (double beep = run, single = walk)
+- Spoken run/walk cues, with beep fallback when speech is unavailable
 - Toggle to hide all time displays (the "I don't want to watch the clock" mode)
 - Screen Wake Lock so your phone stays on
 - Installable as a PWA — works offline
@@ -74,12 +74,12 @@ prompt won't appear over plain HTTP, but the app itself works fine.
 
 ## Project Structure
 
-```
+```tree
 src/
 ├── main.rs        # Leptos components (App, WeekList, SessionList, TimerView)
 ├── schedule.rs    # The 10-week schedule as Rust data structures
 ├── timer.rs       # Timer state machine (pure Rust, unit-tested)
-└── audio.rs       # Web Audio API beep helper via wasm-bindgen
+└── audio.rs       # Spoken cues (Web Speech API) + beep fallback via wasm-bindgen
 
 public/
 ├── index.html     # HTML shell

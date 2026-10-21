@@ -221,6 +221,20 @@ html, body {
     font-family: inherit;
 }
 
+.volume-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 0 20px;
+    z-index: 2;
+}
+
+.volume-control input[type="range"] {
+    width: min(180px, 45vw);
+    accent-color: white;
+}
+
 .timer-label {
     font-size: 12px;
     color: var(--text-dim);

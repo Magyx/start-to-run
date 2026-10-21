@@ -62,7 +62,7 @@ fn WeekList(on_select: Callback<u32>) -> impl IntoView {
         <div class="screen picker">
             <div class="container">
                 <h1 class="title">"START TO RUN"</h1>
-                <p class="subtitle">"0 → 5K in 10 weken"</p>
+                <p class="subtitle">"0 → 5K in 10 weeks"</p>
 
                 <div class="week-list">
                     {weeks.into_iter().map(|(w, total, pct)| {
@@ -80,7 +80,7 @@ fn WeekList(on_select: Callback<u32>) -> impl IntoView {
                                 <div class="week-info">
                                     <div class="week-name">{format!("Week {}", w)}</div>
                                     <div class="week-meta">
-                                        {format!("{} · {}% lopen", format_time(total), pct)}
+                                        {format!("{} · {}% running", format_time(total), pct)}
                                     </div>
                                 </div>
                                 <div class="week-bar-track">
@@ -112,7 +112,7 @@ fn SessionList(
     view! {
         <div class="screen picker">
             <div class="container">
-                <button class="back-btn" on:click=move |_| on_back(())>"← Alle weken"</button>
+                <button class="back-btn" on:click=move |_| on_back(())>"← All weeks"</button>
                 <h2 class="title">{format!("Week {}", week)}</h2>
 
                 <div class="session-list">
@@ -121,7 +121,7 @@ fn SessionList(
                         view! {
                             <button class="session-btn" on:click=move |_| on_select.run(*s)>
                                 <div class="session-header">
-                                    <span class="session-name">{format!("Sessie {}", s.session)}</span>
+                                    <span class="session-name">{format!("Session {}", s.session)}</span>
                                     <span class="session-time">{format_time(total)}</span>
                                 </div>
                                 <div class="interval-bar">
@@ -139,8 +139,8 @@ fn SessionList(
                                     }).collect_view()}
                                 </div>
                                 <div class="legend">
-                                    <span class="dot-run">"● Lopen"</span>
-                                    <span class="dot-walk">"● Wandelen"</span>
+                                    <span class="dot-run">"● Run"</span>
+                                    <span class="dot-walk">"● Walk"</span>
                                 </div>
                             </button>
                         }
@@ -155,6 +155,8 @@ fn SessionList(
 fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView {
     let (state, set_state) = signal(TimerState::new());
     let (show_time, set_show_time) = signal(true);
+    let (volume, set_volume) = signal(0.7_f64);
+    let (muted, set_muted) = signal(false);
     let session_rc = Arc::new(session);
 
     // 1-second tick interval
@@ -173,9 +175,13 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
                     let handle = gloo_timers::callback::Interval::new(1000, move || {
                         set_state.update(|s| {
                             let changed = s.tick(&session);
-                            if changed && !s.done {
-                                let is_run = s.current_kind(&session) == IntervalKind::Run;
-                                audio::beep(is_run);
+                            if changed {
+                                if s.done {
+                                    audio::finished();
+                                } else {
+                                    let is_run = s.current_kind(&session) == IntervalKind::Run;
+                                    audio::cue(is_run);
+                                }
                             }
                         });
                     });
@@ -189,8 +195,15 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
 
     let session_toggle = session_rc.clone();
     let on_toggle = move |_: web_sys::MouseEvent| {
-        let _ = &session_toggle; // keep borrow checker happy
-        set_state.update(|s| s.toggle());
+        audio::init(); // unlock speech/audio from this user tap
+        set_state.update(|s| {
+            let starting = !s.running && !s.done && s.total_elapsed == 0;
+            s.toggle();
+            if starting {
+                // Announce the first interval right away.
+                audio::cue(s.current_kind(&session_toggle) == IntervalKind::Run);
+            }
+        });
     };
 
     let on_reset = move |e: web_sys::MouseEvent| {
@@ -202,6 +215,23 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
     let toggle_time = move |e: web_sys::MouseEvent| {
         e.stop_propagation();
         set_show_time.update(|v| *v = !*v);
+    };
+
+    let on_volume = move |e: web_sys::Event| {
+        e.stop_propagation();
+        let Ok(value) = event_target_value(&e).parse::<f64>() else {
+            return;
+        };
+        set_volume.set(value);
+        set_muted.set(false);
+        audio::set_volume(value);
+    };
+
+    let toggle_mute = move |e: web_sys::MouseEvent| {
+        e.stop_propagation();
+        let next_muted = !muted.get();
+        set_muted.set(next_muted);
+        audio::set_volume(if next_muted { 0.0 } else { volume.get() });
     };
 
     let s_bg_run = session_rc.clone();
@@ -223,13 +253,28 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
         >
             // Top bar
             <div class="timer-top">
-                <button class="top-btn" on:click=on_reset>"← Terug"</button>
+                <button class="top-btn" on:click=on_reset>"← Back"</button>
                 <span class="timer-label">
                     {move || format!("W{} · S{}", s_label.week, s_label.session)}
                 </span>
                 <button class="top-btn" on:click=toggle_time>
-                    {move || if show_time.get() { "⏱ Aan" } else { "⏱ Uit" }}
+                    {move || if show_time.get() { "⏱ On" } else { "⏱ Off" }}
                 </button>
+            </div>
+
+            <div class="volume-control" on:click=|e: web_sys::MouseEvent| e.stop_propagation()>
+                <button class="top-btn" on:click=toggle_mute>
+                    {move || if muted.get() { "Unmute" } else { "Mute" }}
+                </button>
+                <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    aria-label="Cue volume"
+                    prop:value=move || volume.get().to_string()
+                    on:input=on_volume
+                />
             </div>
 
             // Main area
@@ -238,11 +283,11 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
                     {move || {
                         let st = state.get();
                         if st.done {
-                            "KLAAR!".to_string()
+                            "DONE!".to_string()
                         } else if st.current_kind(&s_action) == IntervalKind::Run {
-                            "LOPEN".to_string()
+                            "RUN".to_string()
                         } else {
-                            "WANDELEN".to_string()
+                            "WALK".to_string()
                         }
                     }}
                 </div>
@@ -251,19 +296,19 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
                     <div class="countdown">
                         { let s_countdown = s_countdown.clone(); move || format_time(state.get().interval_remaining(&s_countdown))}
                     </div>
-                    <div class="countdown-sub">"resterend in interval"</div>
+                    <div class="countdown-sub">"remaining in interval"</div>
                 </Show>
 
                 <Show when=move || !state.get().running && !state.get().done && state.get().total_elapsed == 0>
-                    <div class="hint">"Tik om te starten"</div>
+                    <div class="hint">"Tap to start"</div>
                 </Show>
 
                 <Show when=move || !state.get().running && !state.get().done && (state.get().total_elapsed > 0)>
-                    <div class="hint pulse">"⏸ GEPAUZEERD"</div>
+                    <div class="hint pulse">"⏸ PAUSED"</div>
                 </Show>
 
                 <Show when=move || state.get().done>
-                    <div class="hint done-msg">"Goed gedaan! 🎉"</div>
+                    <div class="hint done-msg">"Well done! 🎉"</div>
                 </Show>
             </div>
 
@@ -300,16 +345,16 @@ fn TimerView(session: Session, on_back: impl Fn(()) + 'static) -> impl IntoView 
                         let s_next = s_next.clone();
                         view! {
                             <div class="timer-footer">
-                                <span>{move || format!("Totaal: {}", format_time(state.get().total_remaining(&s_total))) }</span>
+                                <span>{move || format!("Total: {}", format_time(state.get().total_remaining(&s_total))) }</span>
                                 <span>
                                     {move || {
                                         match state.get().next_interval(&s_next) {
                                             Some((kind, dur)) => format!(
-                                                "Hierna: {} {}",
-                                                if kind == IntervalKind::Run { "Lopen" } else { "Wandelen" },
+                                                "Next: {} {}",
+                                                if kind == IntervalKind::Run { "Run" } else { "Walk" },
                                                 format_time(dur),
                                             ),
-                                            None => "Laatste interval".to_string(),
+                                            None => "Last interval".to_string(),
                                         }
                                     }}
                                 </span>
